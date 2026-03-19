@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "UI Preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "-l", "4455", "."],
+      "port": 4455
+    }
+  ]
+}

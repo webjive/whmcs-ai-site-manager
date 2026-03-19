@@ -1,0 +1,784 @@
+/**
+ * AI Site Manager — Client Area Styles
+ * WebJIVE · https://web-jive.com
+ *
+ * All selectors are prefixed with .aisitemanager- to avoid collisions with
+ * the WHMCS theme's own Bootstrap styles.
+ *
+ * Viewport: desktop only (≥ 992px). No responsive layout in v1.0.
+ */
+
+/* =============================================================================
+   WRAPPER — Two-panel flex container
+   ============================================================================= */
+
+.aisitemanager-wrapper {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    height: calc(100vh - 180px);   /* Fill below WHMCS nav; adjust if your theme nav differs */
+    min-height: 600px;
+    max-height: 900px;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    margin-bottom: 24px;
+}
+
+/* =============================================================================
+   LEFT PANEL — Chat (32%)
+   ============================================================================= */
+
+.aisitemanager-left {
+    width: 32%;
+    min-width: 290px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #dee2e6;
+    background: #fafafa;
+    overflow: hidden;
+}
+
+/* ---- Slim header bar with help button ---- */
+
+.aisitemanager-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 12px;
+    border-bottom: 1px solid #dee2e6;
+    background: #f1f3f4;
+    flex-shrink: 0;
+}
+
+.header-bar-title {
+    font-size: 0.82rem;
+    color: #495057;
+}
+
+.aisitemanager-help-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1.5px solid #adb5bd;
+    background: none;
+    color: #495057;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    flex-shrink: 0;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.aisitemanager-help-btn:hover {
+    background: #1a73e8;
+    border-color: #1a73e8;
+    color: #fff;
+}
+
+/* ---- Help modal ---- */
+
+.aisitemanager-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.aisitemanager-modal-overlay[aria-hidden="true"] {
+    display: none;
+}
+
+.aisitemanager-modal {
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    width: 500px;
+    max-width: 90vw;
+    max-height: 80vh;
+    overflow-y: auto;
+    animation: aisitemanager-modal-in 0.15s ease;
+}
+
+@keyframes aisitemanager-modal-in {
+    from { opacity: 0; transform: scale(0.96) translateY(-8px); }
+    to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+.aisitemanager-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.aisitemanager-modal-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: #202124;
+}
+
+.aisitemanager-modal-close {
+    width: 28px;
+    height: 28px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 1rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+}
+
+.aisitemanager-modal-close:hover {
+    background: #f1f3f4;
+    color: #202124;
+}
+
+.aisitemanager-modal-body {
+    padding: 16px 20px 20px;
+    font-size: 0.88rem;
+    color: #333;
+    line-height: 1.65;
+}
+
+.aisitemanager-modal-body p,
+.aisitemanager-modal-body ol,
+.aisitemanager-modal-body ul {
+    margin: 0 0 12px;
+}
+
+.aisitemanager-modal-body p:last-child,
+.aisitemanager-modal-body ol:last-child,
+.aisitemanager-modal-body ul:last-child {
+    margin-bottom: 0;
+}
+
+.aisitemanager-modal-body ol,
+.aisitemanager-modal-body ul {
+    padding-left: 20px;
+}
+
+.aisitemanager-modal-body li {
+    margin-bottom: 6px;
+}
+
+.aisitemanager-modal-body a { color: #1a73e8; }
+
+/* ---- Uncommitted changes banner ---- */
+
+.aisitemanager-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 14px;
+    background: #fff3cd;
+    border-bottom: 1px solid #ffc107;
+    font-size: 0.85rem;
+    color: #856404;
+    flex-shrink: 0;
+}
+
+.aisitemanager-banner-hidden {
+    display: none;
+}
+
+.banner-text {
+    flex: 1;
+    min-width: 0;
+}
+
+.banner-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.btn-commit-small {
+    padding: 4px 10px;
+    background: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+}
+.btn-commit-small:hover { background: #218838; }
+
+.btn-discard-small {
+    padding: 4px 10px;
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background 0.15s;
+}
+.btn-discard-small:hover { background: #c82333; }
+
+/* ---- Chat toolbar (clear button) ---- */
+
+.aisitemanager-chat-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 14px 2px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.btn-clear-chat {
+    background: none;
+    border: none;
+    font-size: 0.72rem;
+    color: #adb5bd;
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: color 0.15s, background 0.15s;
+    white-space: nowrap;
+}
+.btn-clear-chat:hover {
+    color: #dc3545;
+    background: #fff0f0;
+}
+
+/* ---- Cancel bar (shown while a request is in-flight) ---- */
+
+.aisitemanager-cancel-bar {
+    display: flex;
+    justify-content: center;
+    padding: 6px 10px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafafa;
+    flex-shrink: 0;
+}
+
+.aisitemanager-cancel-btn {
+    padding: 5px 18px;
+    background: none;
+    border: 1px solid #ced4da;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    color: #666;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.aisitemanager-cancel-btn:hover {
+    background: #fff0f0;
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+/* ---- Chat history ---- */
+
+.aisitemanager-chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    scroll-behavior: smooth;
+}
+
+/* Individual message rows */
+
+.aisitemanager-msg {
+    display: flex;
+}
+
+.aisitemanager-msg-user {
+    justify-content: flex-end;
+}
+
+.aisitemanager-msg-assistant {
+    justify-content: flex-start;
+}
+
+/* Message bubbles */
+
+.msg-bubble {
+    max-width: 96%;
+    padding: 7px 11px;
+    border-radius: 14px;
+    font-size: 0.82rem;
+    line-height: 1.48;
+    word-break: break-word;
+}
+
+/* Paragraph blocks — small gap between paragraphs, no extra space after the last */
+.msg-bubble p {
+    margin: 0 0 6px;
+}
+.msg-bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.aisitemanager-msg-user .msg-bubble {
+    background: #1a73e8;
+    color: #fff;
+    border-bottom-right-radius: 4px;
+    max-width: 72%;
+}
+
+.aisitemanager-msg-assistant .msg-bubble {
+    background: #ffffff;
+    color: #202124;
+    border: 1px solid #e0e0e0;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+/* Operation log entries displayed inside assistant messages */
+
+.msg-ops {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid rgba(0,0,0,.1);
+    font-size: 0.78rem;
+    color: #666;
+}
+
+.msg-ops .op-entry {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 0;
+}
+
+.op-icon { flex-shrink: 0; }
+
+/* ---- Input area ---- */
+
+.aisitemanager-input-area {
+    border-top: 1px solid #dee2e6;
+    padding: 7px 10px;
+    background: #fff;
+    flex-shrink: 0;
+}
+
+.aisitemanager-op-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0 8px;
+    font-size: 0.82rem;
+    color: #1a73e8;
+}
+
+/* Textarea row — full width, no buttons sharing space */
+.aisitemanager-input-row {
+    margin-bottom: 5px;
+}
+
+.aisitemanager-textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: none;
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    font-family: inherit;
+    transition: border-color 0.15s;
+    min-height: 44px;
+    max-height: 120px;
+}
+
+.aisitemanager-textarea:focus {
+    outline: none;
+    border-color: #1a73e8;
+    box-shadow: 0 0 0 2px rgba(26,115,232,.15);
+}
+
+/* Actions row — 📎 icon left, ➤ icon right */
+.aisitemanager-input-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.input-actions-left,
+.input-actions-right {
+    display: flex;
+    align-items: center;
+}
+
+.input-hint-inline { display: none; }
+.input-hint { display: none; }
+
+/* Send icon button */
+.aisitemanager-send-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: #1a73e8;
+    color: #fff;
+    border: none;
+    border-radius: 50%;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+
+.aisitemanager-send-btn:hover:not(:disabled) { background: #1558c0; }
+.aisitemanager-send-btn:disabled { background: #9db9e8; cursor: not-allowed; }
+
+/* ---- Attach icon button (📎) ---- */
+
+.aisitemanager-attach-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    background: none;
+    border: 1px solid #ced4da;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    color: #495057;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.aisitemanager-attach-btn:hover:not(:disabled) {
+    background: #e8eaed;
+    border-color: #adb5bd;
+}
+
+.aisitemanager-attach-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ---- Attachment chip container ---- */
+
+.aisitemanager-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding-bottom: 8px;
+}
+
+/* Individual chip */
+
+.attachment-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 8px 4px 6px;
+    background: #e8f0fe;
+    border: 1px solid #c5d7fb;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    color: #1a56c0;
+    max-width: 220px;
+}
+
+.attachment-chip img.chip-thumb {
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 3px;
+    flex-shrink: 0;
+}
+
+.chip-icon {
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.chip-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chip-remove {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #888;
+    font-size: 1rem;
+    padding: 0 0 0 2px;
+    line-height: 1;
+}
+
+.chip-remove:hover { color: #dc3545; }
+
+/* ---- Attached image / file shown in a chat bubble ---- */
+
+.msg-attachment {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(0,0,0,.08);
+}
+
+.msg-attachment img {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: 6px;
+    display: block;
+}
+
+.msg-attach-file {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 9px;
+    background: rgba(0,0,0,.06);
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: inherit;
+    word-break: break-all;
+}
+
+/* =============================================================================
+   RIGHT PANEL — Preview (68%)
+   ============================================================================= */
+
+.aisitemanager-right {
+    width: 68%;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    overflow: hidden;
+}
+
+.aisitemanager-preview-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #495057;
+    flex-shrink: 0;
+}
+
+.preview-label-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Expand / Restore button */
+.preview-btn-maximize {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 9px;
+    background: none;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 0.78rem;
+    color: #495057;
+    cursor: pointer;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background 0.15s, border-color 0.15s;
+    line-height: 1.4;
+}
+
+.preview-btn-maximize:hover {
+    background: #e8eaed;
+    border-color: #adb5bd;
+}
+
+.preview-open-link {
+    color: #1a73e8;
+    text-decoration: none;
+    font-weight: 400;
+}
+.preview-open-link:hover { text-decoration: underline; }
+
+/* =============================================================================
+   RESPONSIVE STACKED LAYOUT
+   Applied via JS ResizeObserver when module width < 780px
+   (handles WHMCS content columns on 13" laptops / narrow viewports)
+   ============================================================================= */
+
+.aisitemanager-wrapper.aisitemanager-stacked {
+    flex-direction: column;
+    height: auto;
+    max-height: none;
+}
+
+/* Chat panel goes full-width on top, fixed height */
+.aisitemanager-wrapper.aisitemanager-stacked .aisitemanager-left {
+    width: 100%;
+    min-width: 0;
+    height: 420px;
+    border-right: none;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* Preview panel below, fixed height */
+.aisitemanager-wrapper.aisitemanager-stacked .aisitemanager-right {
+    width: 100%;
+    height: 460px;
+}
+
+/* Widen bubbles slightly in stacked mode — more horizontal room */
+.aisitemanager-wrapper.aisitemanager-stacked .msg-bubble {
+    max-width: 80%;
+}
+.aisitemanager-wrapper.aisitemanager-stacked .aisitemanager-msg-user .msg-bubble {
+    max-width: 65%;
+}
+
+/* ---- Fullscreen state (Fullscreen API — covers the entire monitor) ---- */
+/*
+ * When the wrapper enters fullscreen via requestFullscreen(), the browser
+ * gives it a fixed position covering the whole viewport.  We override the
+ * height / max-height constraints so the panels fill the screen completely.
+ * The two-panel split (chat left, preview right) is preserved unchanged.
+ */
+
+.aisitemanager-wrapper:fullscreen {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+    margin: 0;
+}
+
+/* Safari / older Chrome prefix */
+.aisitemanager-wrapper:-webkit-full-screen {
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    border: none;
+    margin: 0;
+}
+
+.aisitemanager-iframe-wrap {
+    flex: 1;
+    overflow: hidden;
+    background: #e9ecef;
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.aisitemanager-iframe {
+    flex: 1;
+    height: 100%;
+    border: none;
+    display: block;
+    background: #fff;
+    min-width: 0;
+}
+
+/* ---- Commit / Discard action buttons (bottom of right panel) ---- */
+
+.aisitemanager-panel-actions {
+    display: flex;
+    gap: 10px;
+    padding: 12px 14px;
+    border-top: 1px solid #dee2e6;
+    background: #f8f9fa;
+    flex-shrink: 0;
+}
+
+.aisitemanager-commit-btn {
+    flex: 2;
+    padding: 10px 0;
+    background: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+}
+
+.aisitemanager-commit-btn:hover:not(:disabled) {
+    background: #218838;
+    box-shadow: 0 2px 6px rgba(40,167,69,.35);
+}
+
+.aisitemanager-commit-btn:disabled {
+    background: #a8d5b5;
+    cursor: not-allowed;
+}
+
+.aisitemanager-discard-btn {
+    flex: 1;
+    padding: 10px 0;
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.aisitemanager-discard-btn:hover:not(:disabled) { background: #c82333; }
+.aisitemanager-discard-btn:disabled { background: #eeadb3; cursor: not-allowed; }
+
+/* =============================================================================
+   Spinner animation (used in op-status and loading states)
+   ============================================================================= */
+
+.spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid #b0c4f5;
+    border-top-color: #1a73e8;
+    border-radius: 50%;
+    animation: aisitemanager-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes aisitemanager-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* =============================================================================
+   Not-available state
+   ============================================================================= */
+
+.aisitemanager-not-available {
+    padding: 24px 0;
+}

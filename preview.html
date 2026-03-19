@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>AI Site Manager — Layout Preview</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #e8eaed; padding: 20px; }
+
+.aisitemanager-wrapper {
+  display: flex; flex-direction: row;
+  height: 580px; border: 1px solid #dee2e6; border-radius: 8px;
+  overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+}
+.aisitemanager-left {
+  width: 32%; min-width: 290px; display: flex; flex-direction: column;
+  border-right: 1px solid #dee2e6; background: #fafafa; overflow: hidden;
+}
+.aisitemanager-right {
+  width: 68%; display: flex; flex-direction: column;
+  background: #fff; overflow: hidden;
+}
+
+/* Slim header bar */
+.aisitemanager-header-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px; border-bottom: 1px solid #dee2e6; background: #f1f3f4; flex-shrink: 0;
+}
+.header-bar-title { font-size: 0.82rem; color: #495057; }
+.aisitemanager-help-btn {
+  width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid #adb5bd;
+  background: none; color: #495057; font-size: 0.78rem; font-weight: 700;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; line-height: 1;
+}
+
+.aisitemanager-chat-toolbar {
+  display: flex; justify-content: flex-end;
+  padding: 4px 14px 2px; border-bottom: 1px solid #f0f0f0;
+}
+.btn-clear-chat { background: none; border: none; font-size: 0.72rem; color: #adb5bd; cursor: pointer; padding: 3px 6px; }
+
+/* Chat */
+.aisitemanager-chat { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+.aisitemanager-msg { display: flex; }
+.aisitemanager-msg-user { justify-content: flex-end; }
+.aisitemanager-msg-assistant { justify-content: flex-start; }
+
+.msg-bubble {
+  max-width: 96%;
+  padding: 7px 11px; border-radius: 14px;
+  font-size: 0.82rem; line-height: 1.48; word-break: break-word;
+}
+.msg-bubble p { margin: 0 0 5px; }
+.msg-bubble p:last-child { margin-bottom: 0; }
+.aisitemanager-msg-user .msg-bubble {
+  background: #1a73e8; color: #fff;
+  border-bottom-right-radius: 4px; max-width: 72%;
+}
+.aisitemanager-msg-assistant .msg-bubble {
+  background: #fff; color: #202124;
+  border: 1px solid #e0e0e0; border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+
+/* Input */
+.aisitemanager-input-area { border-top: 1px solid #dee2e6; padding: 7px 10px; background: #fff; flex-shrink: 0; }
+.aisitemanager-input-row { margin-bottom: 5px; }
+.aisitemanager-textarea {
+  width: 100%; resize: none; border: 1px solid #ced4da; border-radius: 8px;
+  padding: 7px 10px; font-size: 0.82rem; line-height: 1.4; font-family: inherit; min-height: 44px;
+}
+.aisitemanager-input-actions {
+  display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-top: 4px;
+}
+.input-actions-left, .input-actions-right { display: flex; align-items: center; }
+
+/* Icon-only buttons */
+.aisitemanager-attach-btn {
+  width: 34px; height: 34px; padding: 0;
+  background: none; border: 1px solid #ced4da; border-radius: 50%;
+  cursor: pointer; font-size: 1rem; line-height: 1; color: #495057;
+  display: flex; align-items: center; justify-content: center;
+}
+.aisitemanager-send-btn {
+  width: 34px; height: 34px; padding: 0;
+  background: #1a73e8; color: #fff; border: none; border-radius: 50%;
+  font-size: 1rem; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Commit bar */
+.aisitemanager-commit-bar { display: flex; gap: 8px; padding: 8px 10px; border-top: 1px solid #dee2e6; background: #f8f9fa; }
+.btn-commit { flex: 1; padding: 8px; background: #28a745; color: #fff; border: none; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.btn-discard { flex: 1; padding: 8px; background: #f8d7da; color: #842029; border: 1px solid #f5c2c7; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+
+/* Preview */
+.aisitemanager-preview-label {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px; background: #f8f9fa; border-bottom: 1px solid #dee2e6;
+  font-size: 0.82rem; color: #555; font-weight: 600;
+}
+.preview-label-actions { display: flex; gap: 8px; align-items: center; font-size: 0.78rem; color: #1a73e8; }
+.aisitemanager-iframe-wrap { flex: 1; overflow: hidden; background: #e9ecef; display: flex; align-items: stretch; justify-content: center; }
+.fake-site { flex: 1; }
+.fake-nav { background: #1a2744; padding: 14px 24px; display: flex; justify-content: space-between; align-items: center; }
+.fake-nav .logo { color: #f0c040; font-weight: 900; font-size: 1.1rem; }
+.fake-hero { background: #fff; padding: 24px; }
+.fake-hero h1 { font-size: 1.6rem; font-weight: 900; color: #1a2744; text-transform: uppercase; margin-bottom: 10px; }
+.fake-hero p { font-size: 0.88rem; color: #555; line-height: 1.6; margin-bottom: 12px; }
+.fake-cta { display: inline-block; padding: 12px 24px; background: #f0c040; color: #1a2744; font-weight: 700; font-size: 0.82rem; text-transform: uppercase; border-radius: 4px; }
+
+/* Modal */
+.aisitemanager-modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+.aisitemanager-modal-overlay[aria-hidden="true"] { display: none; }
+.aisitemanager-modal { background: #fff; border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.25); width: 500px; max-width: 90vw; }
+.aisitemanager-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 12px; border-bottom: 1px solid #dee2e6; }
+.aisitemanager-modal-header h3 { margin: 0; font-size: 1rem; font-weight: 700; color: #202124; }
+.aisitemanager-modal-close { width: 28px; height: 28px; border: none; background: none; cursor: pointer; font-size: 1rem; color: #888; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.aisitemanager-modal-body { padding: 16px 20px 20px; font-size: 0.88rem; color: #333; line-height: 1.65; }
+.aisitemanager-modal-body p, .aisitemanager-modal-body ol, .aisitemanager-modal-body ul { margin: 0 0 12px; }
+.aisitemanager-modal-body ol, .aisitemanager-modal-body ul { padding-left: 20px; }
+.aisitemanager-modal-body li { margin-bottom: 6px; }
+.aisitemanager-cancel-btn { padding: 5px 18px; background: none; border: 1px solid #ced4da; border-radius: 20px; font-size: 0.78rem; color: #666; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="aisitemanager-wrapper">
+  <div class="aisitemanager-left">
+    <div class="aisitemanager-header-bar">
+      <span class="header-bar-title"><strong>AI Site Manager</strong></span>
+      <button class="aisitemanager-help-btn" onclick="document.getElementById('help-modal').removeAttribute('aria-hidden')">?</button>
+    </div>
+    <div class="aisitemanager-chat-toolbar"><button class="btn-clear-chat">🗑 Clear Chat</button></div>
+    <div class="aisitemanager-chat">
+      <div class="aisitemanager-msg aisitemanager-msg-user">
+        <div class="msg-bubble">Show me my current home page in the live preview</div>
+      </div>
+      <div class="aisitemanager-msg aisitemanager-msg-assistant">
+        <div class="msg-bubble">
+          <p>Your home page is already showing in the <strong>preview panel on the right side of your screen!</strong> 👉</p>
+          <p>Just look to the right — it's live and visible right now. Scroll through it to see everything on the page.</p>
+          <p>Would you like to make any changes? I'm happy to help! 😊</p>
+        </div>
+      </div>
+      <div class="aisitemanager-msg aisitemanager-msg-user">
+        <div class="msg-bubble">Change the headline to "Build With Confidence"</div>
+      </div>
+      <div class="aisitemanager-msg aisitemanager-msg-assistant">
+        <div class="msg-bubble">
+          <p>Done! I've updated the headline to <strong>"Build With Confidence"</strong> in the staging area.</p>
+          <p>You can see the change in the preview. Click <strong>Commit</strong> to publish it live.</p>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:center;padding:6px 10px;border-top:1px solid #f0f0f0;background:#fafafa;flex-shrink:0;">
+      <button class="aisitemanager-cancel-btn">⏹ Stop</button>
+    </div>
+    <div class="aisitemanager-input-area">
+      <div class="aisitemanager-input-row">
+        <textarea class="aisitemanager-textarea" rows="2" placeholder="Tell me what you'd like to change on your website…"></textarea>
+      </div>
+      <div class="aisitemanager-input-actions">
+        <div class="input-actions-left">
+          <button class="aisitemanager-attach-btn" title="Attach file">📎</button>
+        </div>
+        <div class="input-actions-right">
+          <button class="aisitemanager-send-btn" title="Send (Enter)">➤</button>
+        </div>
+      </div>
+    </div>
+    <div class="aisitemanager-commit-bar">
+      <button class="btn-commit">✅ Commit Changes</button>
+      <button class="btn-discard">🗑 Discard</button>
+    </div>
+  </div>
+  <div class="aisitemanager-right">
+    <div class="aisitemanager-preview-label">
+      <span>Live Preview</span>
+      <div class="preview-label-actions">
+        <span>⛶ Fullscreen</span>
+        <span>↗ New tab</span>
+      </div>
+    </div>
+    <div class="aisitemanager-iframe-wrap">
+      <div class="fake-site">
+        <div class="fake-nav"><span class="logo">MMI SOLUTIONS</span><span style="color:#fff;font-size:1.3rem">☰</span></div>
+        <div class="fake-hero">
+          <div style="color:#c8a000;font-size:0.7rem;letter-spacing:2px;margin-bottom:8px">── INDIA-FORWARD · CHINA+1 STRATEGY</div>
+          <h1>Build With Confidence</h1>
+          <p>MMI Solutions helps mid-sized U.S. OEMs source turnkey CNC precision manufactured components from India through disciplined technical alignment, structured supplier qualification, and data-enabled production oversight.</p>
+          <div style="border-left:3px solid #dee2e6;padding-left:14px;margin:12px 0;font-size:0.82rem;color:#555">We provide the engineering coordination, supplier evaluation, and execution visibility your team would manage internally.</div>
+          <a class="fake-cta">START THE CONVERSATION →</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal (outside wrapper) -->
+<div class="aisitemanager-modal-overlay" id="help-modal" aria-hidden="true">
+  <div class="aisitemanager-modal">
+    <div class="aisitemanager-modal-header">
+      <h3>How to use AI Site Manager</h3>
+      <button class="aisitemanager-modal-close" onclick="document.getElementById('help-modal').setAttribute('aria-hidden','true')">✕</button>
+    </div>
+    <div class="aisitemanager-modal-body">
+      <p>Welcome to <strong>AI Site Manager</strong>! Use the chat to make changes to your website in plain English — no technical knowledge needed.</p>
+      <p><strong>How it works:</strong></p>
+      <ol>
+        <li>Type what you'd like to change in the chat box (e.g. <em>"Change the headline to Welcome"</em>).</li>
+        <li>Your AI assistant applies changes to a private <strong>staging area</strong>. The preview updates automatically.</li>
+        <li>When happy, click <strong>✅ Commit Changes</strong> to publish to your live website.</li>
+        <li>Changed your mind? Click <strong>🗑 Discard</strong> to cancel with no harm done.</li>
+      </ol>
+      <p><strong>Tips:</strong></p>
+      <ul>
+        <li>Attach images or files with the 📎 button.</li>
+        <li>Press <strong>Enter</strong> to send · <strong>Shift+Enter</strong> for a new line.</li>
+        <li>Use <strong>Fullscreen</strong> (top-right of the preview) for a larger workspace.</li>
+        <li>Use <strong>🗑 Clear Chat</strong> to wipe history and start fresh.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+</body>
+</html>

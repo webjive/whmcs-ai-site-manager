@@ -1,0 +1,59 @@
+# =============================================================================
+# AI Site Manager - .gitignore
+# WebJIVE — https://web-jive.com
+# =============================================================================
+
+# ----- Sensitive configuration (NEVER commit) --------------------------------
+modules/addons/aisitemanager/config.php
+
+# ----- Composer dependencies -------------------------------------------------
+vendor/
+composer.lock
+
+# ----- macOS -----------------------------------------------------------------
+.DS_Store
+**/.DS_Store
+._*
+
+# ----- IDE and editor --------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.settings/
+
+# ----- PHP temp and cache files ----------------------------------------------
+*.tmp
+*.cache
+/cache/
+/storage/
+
+# ----- Logs ------------------------------------------------------------------
+*.log
+logs/
+/log/
+
+# ----- Environment and local overrides ---------------------------------------
+.env
+.env.local
+.env.*.local
+
+# ----- Node (if tooling is added later) --------------------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ----- Build artifacts -------------------------------------------------------
+/dist/
+/build/
+
+# ----- WHMCS installation files (not part of this module) -------------------
+# If this repo is checked out inside a live WHMCS installation,
+# add exclusions here so you don't accidentally commit WHMCS core.
+# Uncomment and adjust as needed:
+# /init.php
+# /includes/
+# /admin/
