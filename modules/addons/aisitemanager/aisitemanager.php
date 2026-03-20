@@ -1079,6 +1079,9 @@ function aisitemanager_dispatchAjax(int $clientId): void
             case 'discard':
                 aisitemanager_ajaxDiscard($clientId, $config);
                 break;
+            case 'set_site_mode':
+                aisitemanager_ajaxSetSiteMode($clientId);
+                break;
             case 'clearChat':
                 aisitemanager_ajaxClearChat($clientId);
                 break;
@@ -1391,6 +1394,90 @@ function aisitemanager_ajaxDiscard(int $clientId, array $config): void
     ]);
 
     echo json_encode(['message' => 'All staged changes have been discarded.']);
+    exit;
+}
+
+/**
+ * Save site_mode for this client and regenerate the preview token.
+ * Returns the new preview URL so JS can reload the iframe immediately.
+ */
+function aisitemanager_ajaxSetSiteMode(int $clientId): void
+{
+    $mode = trim($_POST['mode'] ?? '');
+    if (!in_array($mode, ['construction', 'production'], true)) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid mode.']);
+        exit;
+    }
+
+    $configFile = __DIR__ . '/config.php';
+    $config     = file_exists($configFile) ? require $configFile : [];
+    $stagingDir = $config['staging_dir'] ?? '.ai_staging';
+
+    // Save to DB.
+    Capsule::table('mod_aisitemanager_accounts')
+        ->where('whmcs_client_id', $clientId)
+        ->update(['site_mode' => $mode]);
+
+    // Reload the full account row after update.
+    $account = Capsule::table('mod_aisitemanager_accounts')
+        ->where('whmcs_client_id', $clientId)
+        ->first();
+
+    // Resolve domain.
+    $siteDomain = '';
+    $hosting    = Capsule::table('tblhosting')
+        ->where('id', $account->whmcs_service_id)
+        ->value('domain');
+    if ($hosting) {
+        $siteDomain = (string)$hosting;
+    }
+
+    // Regenerate token with new site_mode so ai_preview.php picks it up.
+    $previewToken = null;
+    try {
+        $ftpPassword = \WHMCS\Module\Addon\AiSiteManager\Encryption::decrypt($account->ftp_password);
+        $ftp = new \WHMCS\Module\Addon\AiSiteManager\FtpClient(
+            $account->ftp_host,
+            (int)$account->ftp_port,
+            $account->ftp_username,
+            $ftpPassword,
+            (int)($config['ftp_timeout'] ?? 30)
+        );
+        $ftp->connect();
+        $staging      = new \WHMCS\Module\Addon\AiSiteManager\StagingManager($ftp, $stagingDir, $clientId);
+        $previewToken = $staging->generatePreviewToken(
+            (int)($config['preview_token_ttl'] ?? 28800),
+            $siteDomain,
+            $mode
+        );
+        $ftp->disconnect();
+    } catch (\Exception $e) {
+        logActivity("AI Site Manager: set_site_mode token regen failed for #{$clientId}: " . $e->getMessage());
+    }
+
+    $serverHostname = $account->ftp_host        ?? '';
+    $cpanelUser     = $account->cpanel_username ?? '';
+    $previewBase    = ($serverHostname && $cpanelUser)
+        ? 'https://' . $serverHostname . '/~' . $cpanelUser . '/'
+        : '';
+
+    $stagingActive = (bool)$account->staging_active;
+
+    $previewUrl   = ($previewToken && $stagingActive)
+        ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)
+        : $previewBase;
+
+    $shareableUrl = ($previewToken && $stagingActive)
+        ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)
+        : '';
+
+    echo json_encode([
+        'mode'          => $mode,
+        'preview_url'   => $previewUrl,
+        'shareable_url' => $shareableUrl,
+        'preview_token' => $previewToken ?? '',
+    ]);
     exit;
 }
 
