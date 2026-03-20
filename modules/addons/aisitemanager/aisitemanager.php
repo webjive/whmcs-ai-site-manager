@@ -40,7 +40,7 @@ spl_autoload_register(function (string $class) {
 });
 
 /** Current module version — follows semver. */
-define('AISITEMANAGER_VERSION', '1.0.0');
+define('AISITEMANAGER_VERSION', '1.1.0');
 
 // =============================================================================
 // Module metadata
@@ -143,6 +143,7 @@ function aisitemanager_activate(): array
                 $table->integer('ftp_port')->default(21);
                 $table->boolean('ai_enabled')->default(false);
                 $table->boolean('staging_active')->default(false);
+                $table->string('site_mode', 20)->default('construction');
                 $table->string('preview_token', 64)->nullable();
                 $table->dateTime('preview_token_expiry')->nullable();
                 $table->timestamp('created_at')->useCurrent();
@@ -242,13 +243,15 @@ function aisitemanager_deactivate(): array
  */
 function aisitemanager_upgrade(array $vars): void
 {
-    // $previousVersion = $vars['version'];
-    // Example future migration:
-    // if (version_compare($previousVersion, '1.1.0', '<')) {
-    //     Capsule::schema()->table('mod_aisitemanager_accounts', function ($table) {
-    //         $table->string('new_column')->nullable();
-    //     });
-    // }
+    $prev = $vars['version'] ?? '0';
+
+    if (version_compare($prev, '1.1.0', '<')) {
+        if (!Capsule::schema()->hasColumn('mod_aisitemanager_accounts', 'site_mode')) {
+            Capsule::schema()->table('mod_aisitemanager_accounts', function ($table) {
+                $table->string('site_mode', 20)->default('construction')->after('staging_active');
+            });
+        }
+    }
 }
 
 // =============================================================================
