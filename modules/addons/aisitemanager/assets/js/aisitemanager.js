@@ -109,6 +109,9 @@
         // Apply initial staging state to buttons and banner.
         syncStagingUI();
 
+        // Set initial state of external-facing links (New Tab, Copy Link).
+        syncExternalLinks();
+
         // Bind events.
         if (sendBtn)         sendBtn.addEventListener('click',   handleSendClick);
         if (textareaEl)      textareaEl.addEventListener('keydown', handleTextareaKeydown);
@@ -216,6 +219,12 @@
         if (getFullscreenElement()) {
             exitFullscreen();
         } else {
+            // In production mode, swap the iframe to the live URL so fullscreen
+            // shows the real site with no proxy overhead or injected CSS.
+            if (state.siteMode === 'production' && cfg.siteUrl && previewFrame) {
+                previewFrame.dataset.proxyUrl = previewFrame.src; // remember proxy URL
+                previewFrame.src = cfg.siteUrl;
+            }
             enterFullscreen(wrapperEl);
         }
     }
@@ -240,9 +249,16 @@
     /**
      * Sync the button icon + label whenever fullscreen state changes.
      * This also fires when the user presses Esc to exit.
+     * On exit: restore the proxy URL if we swapped to the live site on enter.
      */
     function syncFullscreenUI() {
         if (!maximizeBtn) { return; }
+
+        // Restore proxy URL when leaving fullscreen (if we swapped it on enter).
+        if (!getFullscreenElement() && previewFrame && previewFrame.dataset.proxyUrl) {
+            previewFrame.src = previewFrame.dataset.proxyUrl;
+            delete previewFrame.dataset.proxyUrl;
+        }
         const isFs       = !!getFullscreenElement();
         const iconExpand  = maximizeBtn.querySelector('.maximize-icon-expand');
         const iconRestore = maximizeBtn.querySelector('.maximize-icon-restore');
@@ -429,12 +445,12 @@
             // falling back to the raw tilde URL.
             if (data.preview_token) { state.previewToken = data.preview_token; }
             syncStagingUI();
+            syncExternalLinks();
 
             // Reload preview using the URL returned by the server (proxy URL),
             // falling back to tilde base only if the server gave us nothing.
             if (previewFrame && data.preview_url) {
                 previewFrame.src = data.preview_url;
-                setPreviewLinkHref(data.preview_url);
             } else {
                 reloadPreviewToLive();
             }
@@ -479,10 +495,10 @@
             state.stagingActive = false;
             if (data.preview_token) { state.previewToken = data.preview_token; }
             syncStagingUI();
+            syncExternalLinks();
 
             if (previewFrame && data.preview_url) {
                 previewFrame.src = data.preview_url;
-                setPreviewLinkHref(data.preview_url);
             } else {
                 reloadPreviewToLive();
             }
@@ -529,14 +545,9 @@
                     });
                     return;
                 }
-                state.siteMode    = data.mode    || newMode;
+                state.siteMode     = data.mode    || newMode;
                 state.previewToken = data.preview_token || state.previewToken;
                 state.shareableUrl = data.shareable_url || '';
-
-                // Show/hide copy URL button.
-                if (copyUrlBtn) {
-                    copyUrlBtn.style.display = state.shareableUrl ? '' : 'none';
-                }
 
                 // Reload preview iframe with the new mode.
                 if (previewFrame && data.preview_url) {
@@ -545,8 +556,13 @@
                         ? data.preview_url + '&path=' + encodeURIComponent(path)
                         : data.preview_url;
                     previewFrame.src = newSrc;
-                    if (previewLink) previewLink.href = newSrc;
                 }
+
+                // Sync external-facing controls (New Tab link, Copy Link button).
+                // In production mode the live site URL is always available, so
+                // Copy Link is always shown.  In construction mode it shows only
+                // when we have a shareable staging-preview URL.
+                syncExternalLinks();
             })
             .catch(function (err) {
                 console.error('set_site_mode fetch failed:', err);
@@ -558,7 +574,7 @@
     // =========================================================================
 
     function handleCopyPreviewUrl() {
-        var url = state.shareableUrl || cfg.shareableUrl;
+        var url = externalPreviewUrl();
         if (!url) return;
 
         if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -765,9 +781,37 @@
         setPreviewLinkHref(url);
     }
 
-    /** Keep the "Open in new tab" link pointed at whatever the iframe is showing. */
+    /**
+     * Return the URL that external-facing controls (New Tab, Copy Link, Fullscreen)
+     * should use.
+     * - Production mode → real live site URL (canonical domain, e.g. giraffetree.com).
+     * - Construction mode → shareable proxy/tilde URL for staging preview.
+     */
+    function externalPreviewUrl() {
+        if (state.siteMode === 'production' && cfg.siteUrl) {
+            return cfg.siteUrl;
+        }
+        return state.shareableUrl || cfg.shareableUrl || cfg.previewBase || cfg.siteUrl || '';
+    }
+
+    /**
+     * Sync the "New tab" link href and Copy Link button visibility to the current mode.
+     * Called on init, on mode toggle, and after commit/discard.
+     */
+    function syncExternalLinks() {
+        var extUrl = externalPreviewUrl();
+        if (previewLink) { previewLink.href = extUrl || '#'; }
+        if (copyUrlBtn) {
+            // Always show Copy Link when a URL is available (in production mode
+            // that's the live URL; in construction mode it's the staging proxy URL).
+            copyUrlBtn.style.display = extUrl ? '' : 'none';
+        }
+    }
+
+    /** Keep the "Open in new tab" link pointed at the appropriate URL. */
     function setPreviewLinkHref(url) {
-        if (previewLink) { previewLink.href = url; }
+        // Ignore the internal proxy URL — always use the mode-aware external URL.
+        syncExternalLinks();
     }
 
     // =========================================================================
