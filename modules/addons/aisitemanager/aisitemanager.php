@@ -905,6 +905,7 @@ function aisitemanager_clientarea(array $vars): array
 
     $siteDomain = $hosting ? (string)$hosting->domain : '';
     $siteUrl    = $siteDomain ? 'https://' . $siteDomain : '#';
+    $siteMode   = (string)($account->site_mode ?? 'construction');
 
     // -------------------------------------------------------------------------
     // Get (or generate) a preview token for the staging iframe.
@@ -928,7 +929,8 @@ function aisitemanager_clientarea(array $vars): array
                 $staging2     = new \WHMCS\Module\Addon\AiSiteManager\StagingManager($ftp2, $stagingDir, $clientId);
                 $previewToken = $staging2->generatePreviewToken(
                     (int)($config['preview_token_ttl'] ?? 28800),
-                    $siteDomain  // Always a string now — resolved above.
+                    $siteDomain,
+                    $siteMode
                 );
                 $ftp2->disconnect();
             } catch (\Exception $e) {
@@ -972,6 +974,11 @@ function aisitemanager_clientarea(array $vars): array
         ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)
         : $previewBase;
 
+    // Shareable URL — always tilde path, works before domain is pointed at server.
+    $shareablePreviewUrl = ($stagingActive && $previewToken)
+        ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)
+        : '';
+
     // URL to the ajax.php endpoint.
     // IMPORTANT: Use the actual request host ($_SERVER['HTTP_HOST']) rather than
     // the WHMCS SystemURL setting. If SystemURL is configured as 'example.com'
@@ -1011,7 +1018,9 @@ function aisitemanager_clientarea(array $vars): array
             'nonce'          => $nonce,
             'header_content' => $headerContent,
             'chat_history'   => $chatHistory,
-            'client_id'      => $clientId,
+            'client_id'             => $clientId,
+            'site_mode'             => $siteMode,
+            'shareable_preview_url' => $shareablePreviewUrl,
         ],
     ];
 }
