@@ -302,20 +302,24 @@ class StagingManager
         $token  = bin2hex(random_bytes(32));
         $expiry = date('Y-m-d H:i:s', time() + $ttl);
 
-        // Store in DB.
+        // Write token file to staging dir FIRST (creates staging if not present).
+        // The DB is only updated after the disk write succeeds. This prevents a
+        // mismatch where the DB holds a new token but the disk file still has the
+        // old expired one — which would cause a permanent 403 on every page load
+        // until manually repaired.
+        $this->initialize();
+        $this->ftp->writeFile(
+            $this->stagingDir . '/.preview_token',
+            json_encode(['token' => $token, 'expiry' => strtotime($expiry)])
+        );
+
+        // FTP write succeeded — now persist the token to the DB.
         Capsule::table('mod_aisitemanager_accounts')
             ->where('whmcs_client_id', $this->clientId)
             ->update([
                 'preview_token'        => $token,
                 'preview_token_expiry' => $expiry,
             ]);
-
-        // Write token file to staging dir (creates staging if not present).
-        $this->initialize();
-        $this->ftp->writeFile(
-            $this->stagingDir . '/.preview_token',
-            json_encode(['token' => $token, 'expiry' => strtotime($expiry)])
-        );
 
         return $token;
     }
