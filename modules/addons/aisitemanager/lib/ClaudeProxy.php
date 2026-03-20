@@ -42,11 +42,21 @@ class ClaudeProxy
     private const MAX_TOOL_ITERATIONS = 10;
 
     /**
-     * Maximum bytes returned by a single read_file tool call.
+     * Maximum bytes returned by a single read_file tool call (what Claude sees).
      * Keep this well under ~24 KB (≈6 000 tokens) so that reading a file
      * plus the existing context never blows the 30 000-token/min rate limit.
+     *
+     * NOTE: This limit applies ONLY to read_file (context display).
+     * edit_file always reads the FULL file so we never truncate and corrupt it.
      */
-    private const DEFAULT_MAX_READ_BYTES = 24576; // 24 KB
+    private const DEFAULT_MAX_READ_BYTES = 24576; // 24 KB — for read_file only
+
+    /**
+     * Maximum bytes read internally by edit_file before applying a replacement.
+     * Set high enough to handle any realistic HTML/CSS/JS file without truncating.
+     * This does NOT get sent to Claude — only the success/error message does.
+     */
+    private const MAX_EDIT_READ_BYTES = 10485760; // 10 MB — full file, never truncate
 
     /**
      * When the Anthropic API returns a rate-limit error (HTTP 429) we wait
@@ -744,8 +754,10 @@ PROMPT;
             return "Error: old_string cannot be empty. Use write_file to create a new file.";
         }
 
-        // Read the current file (prefers staged version over live).
-        $current = $this->staging->readFile($path, $this->maxReadBytes);
+        // Read the FULL file — no byte cap — so we never truncate and corrupt it.
+        // The rate-limit byte cap (maxReadBytes) only applies to read_file, which
+        // returns content to Claude. Here we only send back a short success message.
+        $current = $this->staging->readFile($path, self::MAX_EDIT_READ_BYTES);
 
         if (strpos($current, $oldString) === false) {
             return "Error: The text to replace was not found in '{$path}'. Make sure old_string exactly matches the file content, including whitespace and indentation. Try reading the file again to get the exact text.";
