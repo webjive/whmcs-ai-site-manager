@@ -21,7 +21,7 @@
  *}
 
 {* ---- Module CSS ---- *}
-<link rel="stylesheet" href="{$asset_base}/css/aisitemanager.css?v=12">
+<link rel="stylesheet" href="{$asset_base}/css/aisitemanager.css?v=13">
 
 {if $not_available}
 {* ====================== NOT AVAILABLE MESSAGE ====================== *}
@@ -275,6 +275,6 @@
 </div>
 
 {* ---- Module JavaScript ---- *}
-<script src="{$asset_base}/js/aisitemanager.js?v=3"></script>
+<script src="{$asset_base}/js/aisitemanager.js?v=4"></script>
 
 {/if}{* end not_available *}
