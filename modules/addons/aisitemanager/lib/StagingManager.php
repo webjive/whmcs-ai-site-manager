@@ -246,13 +246,14 @@ class StagingManager
         $this->ftp->deleteDirectoryRecursive($this->stagingDir);
 
         // Update DB flags.
+        // NOTE: preview_token is intentionally NOT cleared here.  The token file
+        // now lives at public_html/.ai_preview_token (outside .ai_staging/) so it
+        // survives the directory deletion above.  Keeping the DB token means the
+        // JS can continue using the same proxy URL after commit without reloading
+        // to the tilde URL.
         Capsule::table('mod_aisitemanager_accounts')
             ->where('whmcs_client_id', $this->clientId)
-            ->update([
-                'staging_active'       => 0,
-                'preview_token'        => null,
-                'preview_token_expiry' => null,
-            ]);
+            ->update(['staging_active' => 0]);
 
         return $log;
     }
@@ -272,14 +273,10 @@ class StagingManager
             $this->ftp->deleteDirectoryRecursive($this->stagingDir);
         }
 
-        // Update DB flags.
+        // Same as commit(): preview_token is intentionally preserved.
         Capsule::table('mod_aisitemanager_accounts')
             ->where('whmcs_client_id', $this->clientId)
-            ->update([
-                'staging_active'       => 0,
-                'preview_token'        => null,
-                'preview_token_expiry' => null,
-            ]);
+            ->update(['staging_active' => 0]);
     }
 
     // =========================================================================
@@ -297,24 +294,27 @@ class StagingManager
      * @return string       The new preview token.
      * @throws \RuntimeException on FTP failure.
      */
+    /**
+     * Name of the token file written to the public_html root (FTP path "/").
+     * Kept at root (not inside .ai_staging/) so the token survives
+     * commit() / discard() operations that wipe the staging directory.
+     */
+    public const TOKEN_FILE = '/.ai_preview_token';
+
     public function generatePreviewToken(int $ttl = 28800, string $siteDomain = '', string $siteMode = 'construction'): string
     {
         $token  = bin2hex(random_bytes(32));
         $expiry = date('Y-m-d H:i:s', time() + $ttl);
 
-        // Write token file to staging dir FIRST (creates staging if not present).
-        // The DB is only updated after the disk write succeeds. This prevents a
-        // mismatch where the DB holds a new token but the disk file still has the
-        // old expired one — which would cause a permanent 403 on every page load
-        // until manually repaired.
+        // Write the token to public_html/.ai_preview_token (FTP root = public_html/).
+        // Storing it OUTSIDE .ai_staging/ means the token survives after the
+        // user commits or discards staged changes — the proxy URL keeps working
+        // so the preview does not fall back to the tilde URL after a commit.
         //
-        // site_domain is stored so ai_preview.php can inject the correct <base>
-        // tag pointing to the live domain (e.g. giraffetree.com) rather than the
-        // server tilde URL — this ensures all relative assets (CSS, JS, images)
-        // resolve from the live site, not from earth1.webjive.net/~user/.
-        $this->initialize();
+        // The DB is updated only after the disk write succeeds, preventing a
+        // mismatch where the DB has a new token but the disk file is stale.
         $this->ftp->writeFile(
-            $this->stagingDir . '/.preview_token',
+            self::TOKEN_FILE,
             json_encode([
                 'token'       => $token,
                 'expiry'      => strtotime($expiry),

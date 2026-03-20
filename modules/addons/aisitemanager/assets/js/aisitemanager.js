@@ -423,11 +423,21 @@
 
             // Staging is now cleared.
             state.stagingActive = false;
-            state.previewToken  = null;
+            // Keep previewToken — the token file lives outside .ai_staging/ and
+            // survives the commit.  The server returns the same proxy URL so we
+            // stay in the correct mode (production or construction) without
+            // falling back to the raw tilde URL.
+            if (data.preview_token) { state.previewToken = data.preview_token; }
             syncStagingUI();
 
-            // Reload preview to live site.
-            reloadPreviewToLive();
+            // Reload preview using the URL returned by the server (proxy URL),
+            // falling back to tilde base only if the server gave us nothing.
+            if (previewFrame && data.preview_url) {
+                previewFrame.src = data.preview_url;
+                setPreviewLinkHref(data.preview_url);
+            } else {
+                reloadPreviewToLive();
+            }
 
             // Show confirmation in chat.
             appendMessage('assistant', '✅ All your changes have been published to your live website! Your visitors can now see the updates.');
@@ -467,10 +477,15 @@
             }
 
             state.stagingActive = false;
-            state.previewToken  = null;
+            if (data.preview_token) { state.previewToken = data.preview_token; }
             syncStagingUI();
 
-            reloadPreviewToLive();
+            if (previewFrame && data.preview_url) {
+                previewFrame.src = data.preview_url;
+                setPreviewLinkHref(data.preview_url);
+            } else {
+                reloadPreviewToLive();
+            }
 
             appendMessage('assistant', '🗑 All staged changes have been discarded. Your live website is unchanged.');
 

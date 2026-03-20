@@ -274,6 +274,6 @@
 </div>
 
 {* ---- Module JavaScript ---- *}
-<script src="{$asset_base}/js/aisitemanager.js?v=5"></script>
+<script src="{$asset_base}/js/aisitemanager.js?v=6"></script>
 
 {/if}{* end not_available *}

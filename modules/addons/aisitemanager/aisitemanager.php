@@ -1390,6 +1390,21 @@ function aisitemanager_ajaxCommit(int $clientId, array $config): void
     $log     = $staging->commit();
     $ftp->disconnect();
 
+    // The preview token was NOT cleared by commit() — it lives at
+    // public_html/.ai_preview_token which survives staging deletion.
+    // Read it back from DB so JS can keep using the same proxy URL.
+    $serverHostname = $account->ftp_host        ?? '';
+    $cpanelUser     = $account->cpanel_username ?? '';
+    $previewBase    = ($serverHostname && $cpanelUser)
+        ? 'https://' . $serverHostname . '/~' . $cpanelUser . '/'
+        : '';
+    $freshToken = Capsule::table('mod_aisitemanager_accounts')
+        ->where('whmcs_client_id', $clientId)
+        ->value('preview_token');
+    $previewUrl = ($previewBase && $freshToken)
+        ? $previewBase . 'ai_preview.php?t=' . urlencode($freshToken)
+        : '';
+
     Capsule::table('mod_aisitemanager_chat_history')->insert([
         'whmcs_client_id' => $clientId,
         'role'            => 'assistant',
@@ -1397,7 +1412,12 @@ function aisitemanager_ajaxCommit(int $clientId, array $config): void
         'created_at'      => date('Y-m-d H:i:s'),
     ]);
 
-    echo json_encode(['message' => 'All staged changes have been published to your live site.', 'log' => $log]);
+    echo json_encode([
+        'message'       => 'All staged changes have been published to your live site.',
+        'log'           => $log,
+        'preview_url'   => $previewUrl,
+        'preview_token' => $freshToken ?? '',
+    ]);
     exit;
 }
 
@@ -1420,6 +1440,19 @@ function aisitemanager_ajaxDiscard(int $clientId, array $config): void
     $staging->discard();
     $ftp->disconnect();
 
+    // Same as commit — token survives, return the proxy URL so JS stays in the correct mode.
+    $serverHostname = $account->ftp_host        ?? '';
+    $cpanelUser     = $account->cpanel_username ?? '';
+    $previewBase    = ($serverHostname && $cpanelUser)
+        ? 'https://' . $serverHostname . '/~' . $cpanelUser . '/'
+        : '';
+    $freshToken = Capsule::table('mod_aisitemanager_accounts')
+        ->where('whmcs_client_id', $clientId)
+        ->value('preview_token');
+    $previewUrl = ($previewBase && $freshToken)
+        ? $previewBase . 'ai_preview.php?t=' . urlencode($freshToken)
+        : '';
+
     Capsule::table('mod_aisitemanager_chat_history')->insert([
         'whmcs_client_id' => $clientId,
         'role'            => 'assistant',
@@ -1427,7 +1460,11 @@ function aisitemanager_ajaxDiscard(int $clientId, array $config): void
         'created_at'      => date('Y-m-d H:i:s'),
     ]);
 
-    echo json_encode(['message' => 'All staged changes have been discarded.']);
+    echo json_encode([
+        'message'       => 'All staged changes have been discarded.',
+        'preview_url'   => $previewUrl,
+        'preview_token' => $freshToken ?? '',
+    ]);
     exit;
 }
 

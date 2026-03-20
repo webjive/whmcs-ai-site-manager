@@ -50,10 +50,12 @@ if (empty($tokenParam) || !preg_match('/^[a-f0-9]{64}$/', $tokenParam)) {
     exit;
 }
 
-// The token file is at .ai_staging/.preview_token (written by StagingManager::generatePreviewToken()).
+// The token file is at public_html/.ai_preview_token (written by StagingManager::generatePreviewToken()).
+// It lives in the public_html root — NOT inside .ai_staging/ — so it survives
+// after the user commits or discards staged changes.
 $publicHtmlDir = __DIR__;                             // This file lives in public_html root.
 $stagingDir    = $publicHtmlDir . '/.ai_staging';
-$tokenFilePath = $stagingDir . '/.preview_token';
+$tokenFilePath = $publicHtmlDir . '/.ai_preview_token';
 
 if (!file_exists($tokenFilePath)) {
     http_response_code(403);
