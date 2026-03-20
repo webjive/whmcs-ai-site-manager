@@ -981,13 +981,26 @@ function aisitemanager_clientarea(array $vars): array
         ? 'https://' . $serverHostname . '/~' . $cpanelUser . '/'
         : $siteUrl . '/';
 
-    // Always route through ai_preview.php so site_mode is respected whether
-    // or not any files are currently staged.
-    $previewUrl = $previewToken
+    // Preview URL strategy:
+    //   Production + no staging  → load live domain directly in the iframe.
+    //     The live site renders with full CSS/JS from its own origin — no CORS
+    //     issues, no proxy overhead. Works as long as the site has no
+    //     X-Frame-Options restriction (checked on provisioning).
+    //   Production + staging     → route through ai_preview.php proxy so
+    //     staged changes overlay the fetched live HTML.
+    //   Construction (any)       → always route through ai_preview.php which
+    //     serves files directly from the tilde path (domain may not exist yet).
+    $proxyUrl = $previewToken
         ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)
         : $previewBase;
 
-    // Shareable URL — always tilde path, works before domain is pointed at server.
+    if ($siteMode === 'production' && !$stagingActive && $siteDomain) {
+        $previewUrl = 'https://' . $siteDomain . '/';
+    } else {
+        $previewUrl = $proxyUrl;
+    }
+
+    // Shareable URL — always tilde proxy path so it works regardless of DNS.
     $shareablePreviewUrl = $previewToken
         ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)
         : '';
@@ -1475,9 +1488,19 @@ function aisitemanager_ajaxSetSiteMode(int $clientId): void
         ? 'https://' . $serverHostname . '/~' . $cpanelUser . '/'
         : '';
 
-    $previewUrl   = $previewToken
+    $proxyUrl   = $previewToken
         ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)
         : $previewBase;
+
+    $stagingActive = (bool)$account->staging_active;
+
+    // Production + no staged changes → live domain directly (full CSS, no CORS).
+    // All other cases → proxy through ai_preview.php.
+    if ($mode === 'production' && !$stagingActive && $siteDomain) {
+        $previewUrl = 'https://' . $siteDomain . '/';
+    } else {
+        $previewUrl = $proxyUrl;
+    }
 
     $shareableUrl = $previewToken
         ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)

@@ -239,6 +239,15 @@ if ($isHtml) {
         // In production mode base href must point to live domain.
         $baseUrl = 'https://' . $liveDomain . '/';
 
+        // Strip crossorigin attributes — when serving from the preview host
+        // (earth1.webjive.net) browsers enforce CORS for crossorigin-tagged
+        // resources fetched from the live domain, blocking all CSS and JS.
+        // Removing the attribute allows assets to load without CORS checks.
+        // Also strip type="module" from script tags (module scripts always
+        // use CORS); Vite bundles work fine as regular deferred scripts.
+        $content = preg_replace('/\s+crossorigin(?:=["\'][^"\']*["\'])?/i', '', $content);
+        $content = preg_replace('/(<script\b[^>]*)\s+type=["\']module["\']/i', '$1 defer', $content);
+
     } else {
         // ---------------------------------------------------------------
         // DEVELOPMENT (CONSTRUCTION) MODE — serve direct
