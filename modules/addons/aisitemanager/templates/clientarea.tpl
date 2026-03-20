@@ -44,6 +44,8 @@
      data-preview-url="{$preview_url|escape:'html'}"
      data-preview-base="{$preview_base|escape:'html'}"
      data-preview-token="{$preview_token|escape:'html'}"
+     data-site-mode="{$site_mode|escape:'html'}"
+     data-shareable-url="{$shareable_preview_url|escape:'html'}"
      style="display:none;"
      aria-hidden="true">
 </div>
@@ -170,7 +172,37 @@
         <div class="aisitemanager-preview-label">
             <span class="preview-label-text">Live Preview</span>
 
+            <div class="preview-label-center">
+                {* ---- Dev / Production pill toggle ---- *}
+                <div class="aisitemanager-mode-toggle" id="aisitemanager-mode-toggle"
+                     role="group" aria-label="Site mode">
+                    <button type="button"
+                            class="mode-pill{if $site_mode == 'construction'} mode-pill-active{/if}"
+                            id="mode-pill-construction"
+                            data-mode="construction"
+                            title="Development mode — serve files direct from server, no live domain needed">
+                        🏗 Development
+                    </button>
+                    <button type="button"
+                            class="mode-pill{if $site_mode == 'production'} mode-pill-active{/if}"
+                            id="mode-pill-production"
+                            data-mode="production"
+                            title="Production mode — preview against live domain, CSS and assets load perfectly">
+                        🌐 Production
+                    </button>
+                </div>
+            </div>
+
             <div class="preview-label-actions">
+                {* ---- Copy shareable preview URL ---- *}
+                <button type="button"
+                        class="preview-btn-copy-url"
+                        id="aisitemanager-copy-url"
+                        title="Copy shareable preview link to clipboard"
+                        {if !$shareable_preview_url}style="display:none;"{/if}>
+                    🔗 Copy Link
+                </button>
+
                 <button type="button"
                         class="preview-btn-maximize"
                         id="aisitemanager-maximize"
