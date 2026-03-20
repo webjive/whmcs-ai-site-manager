@@ -297,7 +297,7 @@ class StagingManager
      * @return string       The new preview token.
      * @throws \RuntimeException on FTP failure.
      */
-    public function generatePreviewToken(int $ttl = 28800, string $siteDomain = ''): string
+    public function generatePreviewToken(int $ttl = 28800, string $siteDomain = '', string $siteMode = 'construction'): string
     {
         $token  = bin2hex(random_bytes(32));
         $expiry = date('Y-m-d H:i:s', time() + $ttl);
@@ -319,6 +319,7 @@ class StagingManager
                 'token'       => $token,
                 'expiry'      => strtotime($expiry),
                 'site_domain' => $siteDomain,
+                'site_mode'   => $siteMode,
             ])
         );
 
