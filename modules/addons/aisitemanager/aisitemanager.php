@@ -1223,9 +1223,12 @@ function aisitemanager_ajaxChat(int $clientId, array $config): void
     $result       = $proxy->chat($message, $chatHistory, $customerName, $customerDomain, $attachment);
     $previewToken = null;
     if ($result['staging_written']) {
+        // Pass both the live domain AND the current site_mode so the token
+        // preserves production mode rather than defaulting back to construction.
         $previewToken = $staging->generatePreviewToken(
             (int)($config['preview_token_ttl'] ?? 28800),
-            $customerDomain  // Pass live domain so ai_preview.php injects correct <base> tag.
+            $customerDomain,
+            (string)($account->site_mode ?? 'construction')
         );
     }
     $ftp->disconnect();
