@@ -908,46 +908,33 @@ function aisitemanager_clientarea(array $vars): array
     $siteMode   = (string)($account->site_mode ?? 'construction');
 
     // -------------------------------------------------------------------------
-    // Always generate a preview token — the token carries site_mode so
-    // ai_preview.php knows whether to serve files directly (construction) or
-    // cURL-proxy against the live domain (production), regardless of whether
-    // any files are currently staged.
+    // Always generate a fresh preview token on every page load.
     //
-    // Reuse the existing token only if it is still valid AND was generated
-    // for the current site_mode (mode change requires a fresh token so the
-    // token file on disk reflects the new mode immediately).
+    // The token is written to public_html/.ai_preview_token via FTP so that
+    // ai_preview.php can validate it without database access.  We intentionally
+    // do NOT reuse a cached DB token: the old "canReuseToken" optimisation would
+    // skip the FTP write, leaving the token file absent or stale whenever the
+    // file location changes between module versions.  The cost is one small FTP
+    // write per page load (~100 ms), which is acceptable for a preview session.
     // -------------------------------------------------------------------------
     $previewToken = null;
-    $tokenStillValid = $account->preview_token
-        && $account->preview_token_expiry
-        && strtotime($account->preview_token_expiry) > time();
-
-    // We can only reuse the token if the mode hasn't changed.  Since we don't
-    // store the mode alongside the DB token, we always regenerate in production
-    // mode (cheap insurance) and reuse in construction mode when still valid.
-    $canReuseToken = $tokenStillValid && $siteMode === 'construction';
-
-    if ($canReuseToken) {
-        $previewToken = $account->preview_token;
-    } else {
-        try {
-            $ftpPassword2 = \WHMCS\Module\Addon\AiSiteManager\Encryption::decrypt($account->ftp_password);
-            $ftp2 = new \WHMCS\Module\Addon\AiSiteManager\FtpClient(
-                $account->ftp_host, (int)$account->ftp_port,
-                $account->ftp_username, $ftpPassword2,
-                (int)($config['ftp_timeout'] ?? 30)
-            );
-            $ftp2->connect();
-            $staging2     = new \WHMCS\Module\Addon\AiSiteManager\StagingManager($ftp2, $stagingDir, $clientId);
-            $previewToken = $staging2->generatePreviewToken(
-                (int)($config['preview_token_ttl'] ?? 28800),
-                $siteDomain,
-                $siteMode
-            );
-            $ftp2->disconnect();
-        } catch (\Exception $e) {
-            logActivity("AI Site Manager: Preview token generation failed for client #{$clientId}: " . $e->getMessage());
-        }
+    try {
+        $ftpPassword2 = \WHMCS\Module\Addon\AiSiteManager\Encryption::decrypt($account->ftp_password);
+        $ftp2 = new \WHMCS\Module\Addon\AiSiteManager\FtpClient(
+            $account->ftp_host, (int)$account->ftp_port,
+            $account->ftp_username, $ftpPassword2,
+            (int)($config['ftp_timeout'] ?? 30)
+        );
+        $ftp2->connect();
+        $staging2     = new \WHMCS\Module\Addon\AiSiteManager\StagingManager($ftp2, $stagingDir, $clientId);
+        $previewToken = $staging2->generatePreviewToken(
+            (int)($config['preview_token_ttl'] ?? 28800),
+            $siteDomain,
+            $siteMode
+        );
+        $ftp2->disconnect();
+    } catch (\Exception $e) {
+        logActivity("AI Site Manager: Preview token generation failed for client #{$clientId}: " . $e->getMessage());
     }
 
     // -------------------------------------------------------------------------
