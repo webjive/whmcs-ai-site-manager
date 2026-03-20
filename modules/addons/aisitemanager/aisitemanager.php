@@ -904,7 +904,7 @@ function aisitemanager_clientarea(array $vars): array
                 $staging2     = new \WHMCS\Module\Addon\AiSiteManager\StagingManager($ftp2, $stagingDir, $clientId);
                 $previewToken = $staging2->generatePreviewToken(
                     (int)($config['preview_token_ttl'] ?? 28800),
-                    $siteDomain   // Pass live domain so ai_preview.php uses correct <base> URL.
+                    $siteDomain ?? ''   // Pass live domain so ai_preview.php uses correct <base> URL.
                 );
                 $ftp2->disconnect();
             } catch (\Exception $e) {

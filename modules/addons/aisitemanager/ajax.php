@@ -204,7 +204,7 @@ function handleChat(int $clientId, array $config): void
     if ($result['staging_written']) {
         $previewToken = $staging->generatePreviewToken(
             (int)($config['preview_token_ttl'] ?? 28800),
-            $customerDomain
+            $customerDomain ?? ''
         );
     }
 
