@@ -782,3 +782,78 @@
 .aisitemanager-not-available {
     padding: 24px 0;
 }
+
+/* ==========================================================================
+   Dev / Production mode pill toggle + shareable URL button
+   ========================================================================== */
+
+/* Preview bar flex layout — label left, toggle center, actions right */
+.aisitemanager-preview-label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.preview-label-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+/* Pill toggle container */
+.aisitemanager-mode-toggle {
+    display: inline-flex;
+    background: rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+    padding: 2px;
+    gap: 2px;
+}
+
+/* Individual pill button */
+.mode-pill {
+    border: none;
+    background: transparent;
+    border-radius: 999px;
+    padding: 4px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.65;
+    transition: background 0.15s ease, opacity 0.15s ease;
+    white-space: nowrap;
+    line-height: 1.4;
+}
+
+.mode-pill:hover {
+    opacity: 0.9;
+}
+
+/* Active pill — white background, full opacity */
+.mode-pill-active {
+    background: #ffffff;
+    color: #1a1a1a;
+    opacity: 1;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* Copy preview URL button */
+.preview-btn-copy-url {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 12px;
+    color: inherit;
+    opacity: 0.75;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: opacity 0.15s ease, background 0.15s ease;
+    white-space: nowrap;
+}
+
+.preview-btn-copy-url:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+}
