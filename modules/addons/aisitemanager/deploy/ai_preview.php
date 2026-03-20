@@ -191,11 +191,16 @@ $isHtml = in_array($ext, ['html', 'htm', 'php'], true);
 if ($isHtml) {
     $content = file_get_contents($filePath);
 
-    // Build the live site base URL so relative links resolve correctly.
-    // We use the HTTP_HOST header to construct it.
-    $scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host    = $_SERVER['HTTP_HOST'] ?? '';
-    $baseUrl = $scheme . '://' . $host . '/';
+    // Build the base URL so relative asset paths (CSS, JS, images) resolve correctly.
+    // When served via a cPanel tilde URL (https://server/~user/ai_preview.php) we
+    // must include the tilde directory prefix in the base; otherwise all relative
+    // assets resolve to https://server/asset.css instead of https://server/~user/asset.css
+    // and return 404 — which is the root cause of the blank/broken preview.
+    $scheme     = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host       = $_SERVER['HTTP_HOST'] ?? '';
+    $scriptDir  = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/ai_preview.php'), '/');
+    $basePath   = $scriptDir . '/';  // e.g. '/~cpaneluser/' or '/'
+    $baseUrl    = $scheme . '://' . $host . $basePath;
 
     // The staging notice banner, injected at the top of <body>.
     $stagingBanner = $isStaged
@@ -224,6 +229,10 @@ if ($isHtml) {
     $navScript = '<script>'
         . '(function(){'
         .   'var __tok=' . json_encode($tokenParam) . ';'
+        // Base path of this script, e.g. '/~cpaneluser/' or '/'.
+        // Used to strip the tilde prefix so paths sent to the parent frame
+        // remain relative to public_html root (e.g. 'about.html', not '~user/about.html').
+        .   'var __base=' . json_encode($basePath) . ';'
         .   'document.addEventListener("click",function(e){'
         .     'var a=e.target.closest("a");'
         .     'if(!a||!a.href)return;'
@@ -235,7 +244,13 @@ if ($isHtml) {
         //  Skip links that already go through ai_preview.php.
         .     'if(url.pathname.indexOf("ai_preview.php")!==-1)return;'
         .     'e.preventDefault();'
-        .     'var path=url.pathname.replace(/^\\/+/,"");'
+        //  Strip tilde prefix (e.g. /~cpaneluser/) to get the public_html-relative path.
+        .     'var path=url.pathname;'
+        .     'if(__base.length>1&&path.indexOf(__base)===0){'
+        .       'path=path.slice(__base.length);'
+        .     '}else{'
+        .       'path=path.replace(/^\\/+/,"");'
+        .     '}'
         //  Notify the parent WHMCS frame of the page change.
         .     'try{parent.postMessage({type:"aisitemanager_navigate",path:path},"*");}catch(_){}'
         //  Navigate within the preview shim so staged files remain visible.
