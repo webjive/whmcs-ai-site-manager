@@ -51,6 +51,8 @@
     const clearChatBtn = document.getElementById('aisitemanager-clear-chat');
     const cancelBarEl  = document.getElementById('aisitemanager-cancel-bar');
     const cancelBtn    = document.getElementById('aisitemanager-cancel');
+    const modeToggleEl  = document.getElementById('aisitemanager-mode-toggle');
+    const copyUrlBtn    = document.getElementById('aisitemanager-copy-url');
 
     // =========================================================================
     // Configuration from the data element
@@ -67,6 +69,8 @@
         // the preview always shows files from the server directly, bypassing DNS.
         previewBase:   dataEl ? (dataEl.dataset.previewBase || dataEl.dataset.previewUrl || '') : '',
         previewToken:  dataEl ? dataEl.dataset.previewToken  : '',
+        siteMode:      dataEl ? (dataEl.dataset.siteMode     || 'construction') : 'construction',
+        shareableUrl:  dataEl ? (dataEl.dataset.shareableUrl || '')             : '',
     };
 
     // Mutable runtime state.
@@ -75,6 +79,8 @@
         previewToken:  cfg.previewToken,
         sending:       false,
         currentPath:   '',   // Relative path of the page currently shown in the preview iframe.
+        siteMode:     cfg.siteMode,
+        shareableUrl: cfg.shareableUrl,
     };
 
     // AbortController for the active fetch (null when idle).
@@ -126,6 +132,9 @@
 
         // Cancel in-flight request.
         if (cancelBtn) cancelBtn.addEventListener('click', handleCancelSend);
+
+        if (modeToggleEl)  modeToggleEl.addEventListener('click', handleModeToggle);
+        if (copyUrlBtn)    copyUrlBtn.addEventListener('click', handleCopyPreviewUrl);
 
         // Listen for navigation postMessages from the staging preview iframe.
         // ai_preview.php injects a script that fires these when the user clicks
@@ -470,6 +479,84 @@
         } finally {
             setSendingUI(false);
             hideOpStatus();
+        }
+    }
+
+    // =========================================================================
+    // Mode toggle (Construction / Live)
+    // =========================================================================
+
+    function handleModeToggle(e) {
+        var pill = e.target.closest('.mode-pill');
+        if (!pill) return;
+        var newMode = pill.dataset.mode;
+        if (!newMode || newMode === state.siteMode) return;
+
+        // Optimistically update pill appearance.
+        document.querySelectorAll('.mode-pill').forEach(function (p) {
+            p.classList.toggle('mode-pill-active', p.dataset.mode === newMode);
+        });
+
+        // Use the same AJAX pattern as the rest of the file.
+        var formData = new FormData();
+        formData.append('action', 'set_site_mode');
+        formData.append('nonce',  cfg.nonce);
+        formData.append('mode',   newMode);
+
+        fetch(cfg.ajaxUrl, { method: 'POST', body: formData, credentials: 'same-origin' })
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (data.error) {
+                    console.error('set_site_mode error:', data.error);
+                    // Revert pill if server rejected it.
+                    document.querySelectorAll('.mode-pill').forEach(function (p) {
+                        p.classList.toggle('mode-pill-active', p.dataset.mode === state.siteMode);
+                    });
+                    return;
+                }
+                state.siteMode    = data.mode    || newMode;
+                state.previewToken = data.preview_token || state.previewToken;
+                state.shareableUrl = data.shareable_url || '';
+
+                // Show/hide copy URL button.
+                if (copyUrlBtn) {
+                    copyUrlBtn.style.display = state.shareableUrl ? '' : 'none';
+                }
+
+                // Reload preview iframe with the new mode.
+                if (previewFrame && data.preview_url) {
+                    var path = state.currentPath || '';
+                    var newSrc = path
+                        ? data.preview_url + '&path=' + encodeURIComponent(path)
+                        : data.preview_url;
+                    previewFrame.src = newSrc;
+                    if (previewLink) previewLink.href = newSrc;
+                }
+            })
+            .catch(function (err) {
+                console.error('set_site_mode fetch failed:', err);
+            });
+    }
+
+    // =========================================================================
+    // Copy preview URL
+    // =========================================================================
+
+    function handleCopyPreviewUrl() {
+        var url = state.shareableUrl || cfg.shareableUrl;
+        if (!url) return;
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function () {
+                var orig = copyUrlBtn.textContent;
+                copyUrlBtn.textContent = '✅ Copied!';
+                setTimeout(function () { copyUrlBtn.textContent = orig; }, 2000);
+            }).catch(function () {
+                prompt('Copy this preview URL:', url);
+            });
+        } else {
+            // Fallback for HTTP or old browsers.
+            prompt('Copy this preview URL:', url);
         }
     }
 
