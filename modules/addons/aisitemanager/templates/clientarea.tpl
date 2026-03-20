@@ -21,7 +21,7 @@
  *}
 
 {* ---- Module CSS ---- *}
-<link rel="stylesheet" href="{$asset_base}/css/aisitemanager.css?v=13">
+<link rel="stylesheet" href="{$asset_base}/css/aisitemanager.css?v=14">
 
 {if $not_available}
 {* ====================== NOT AVAILABLE MESSAGE ====================== *}
@@ -226,7 +226,6 @@
                 class="aisitemanager-iframe"
                 src="{$preview_url|escape:'html'}"
                 title="Website preview"
-                sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
             ></iframe>
         </div>
 
@@ -275,6 +274,6 @@
 </div>
 
 {* ---- Module JavaScript ---- *}
-<script src="{$asset_base}/js/aisitemanager.js?v=4"></script>
+<script src="{$asset_base}/js/aisitemanager.js?v=5"></script>
 
 {/if}{* end not_available *}

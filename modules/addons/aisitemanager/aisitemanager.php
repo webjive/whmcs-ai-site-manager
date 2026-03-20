@@ -981,24 +981,29 @@ function aisitemanager_clientarea(array $vars): array
         ? 'https://' . $serverHostname . '/~' . $cpanelUser . '/'
         : $siteUrl . '/';
 
-    // Preview URL strategy:
-    //   Production + no staging  → load live domain directly in the iframe.
-    //     The live site renders with full CSS/JS from its own origin — no CORS
-    //     issues, no proxy overhead. Works as long as the site has no
-    //     X-Frame-Options restriction (checked on provisioning).
-    //   Production + staging     → route through ai_preview.php proxy so
-    //     staged changes overlay the fetched live HTML.
-    //   Construction (any)       → always route through ai_preview.php which
-    //     serves files directly from the tilde path (domain may not exist yet).
+    // Preview URL strategy: always route through ai_preview.php proxy.
+    //
+    //   Construction (any)   → proxy serves files directly from the tilde path
+    //                          (domain may not exist yet).
+    //   Production + staging → proxy fetches live HTML via cURL and overlays
+    //                          staged changes; strips crossorigin/type=module
+    //                          attributes to prevent CORS failures.
+    //   Production + no staging → proxy fetches live HTML via cURL and serves
+    //                          it with CSS fixes injected (negative z-index
+    //                          overrides ensure hero background layers render
+    //                          correctly inside the iframe).
+    //
+    // NOTE: We previously loaded the live domain directly (no proxy) for the
+    // production+no-staging case to avoid CORS overhead.  The direct-iframe
+    // approach caused a white gap in the hero section because Tailwind's
+    // isolation:isolate + -z-10 combination renders background layers below
+    // the stacking context in some iframe/sandbox configurations.  The proxy
+    // injecting [class*="-z-"]{z-index:0!important} fixes this reliably.
     $proxyUrl = $previewToken
         ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)
         : $previewBase;
 
-    if ($siteMode === 'production' && !$stagingActive && $siteDomain) {
-        $previewUrl = 'https://' . $siteDomain . '/';
-    } else {
-        $previewUrl = $proxyUrl;
-    }
+    $previewUrl = $proxyUrl;
 
     // Shareable URL — always tilde proxy path so it works regardless of DNS.
     $shareablePreviewUrl = $previewToken
@@ -1494,13 +1499,9 @@ function aisitemanager_ajaxSetSiteMode(int $clientId): void
 
     $stagingActive = (bool)$account->staging_active;
 
-    // Production + no staged changes → live domain directly (full CSS, no CORS).
-    // All other cases → proxy through ai_preview.php.
-    if ($mode === 'production' && !$stagingActive && $siteDomain) {
-        $previewUrl = 'https://' . $siteDomain . '/';
-    } else {
-        $previewUrl = $proxyUrl;
-    }
+    // Always proxy through ai_preview.php — the proxy injects CSS fixes that
+    // ensure consistent rendering in the iframe (see clientarea load for details).
+    $previewUrl = $proxyUrl;
 
     $shareableUrl = $previewToken
         ? $previewBase . 'ai_preview.php?t=' . urlencode($previewToken)

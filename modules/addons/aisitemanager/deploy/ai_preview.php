@@ -266,10 +266,17 @@ if ($isHtml) {
     }
 
     // Inject <base> tag so relative assets resolve against correct domain.
+    // Also inject a CSS fix: Tailwind's -z-10 / -z-20 etc. (z-index: -10) inside an
+    // isolation:isolate stacking context can render below the element's own background
+    // layer in some iframe/browser combinations, making the overlays invisible and
+    // exposing the white page background behind the hero section.  Overriding those
+    // classes to z-index: 0 keeps them below z-10 content but above the stacking
+    // context's background — the visual result is identical except the gap is gone.
     if (stripos($content, '<head') !== false) {
         $content = preg_replace(
             '/(<head[^>]*>)/i',
-            '$1' . "\n" . '<base href="' . htmlspecialchars($baseUrl, ENT_QUOTES) . '">',
+            '$1' . "\n" . '<base href="' . htmlspecialchars($baseUrl, ENT_QUOTES) . '">'
+                . "\n" . '<style id="aisitemanager-preview-fix">[class*="-z-"]{z-index:0!important}</style>',
             $content,
             1
         );
