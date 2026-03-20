@@ -883,6 +883,27 @@ function aisitemanager_clientarea(array $vars): array
     $_SESSION['aisitemanager_nonce'] = $nonce;
 
     // -------------------------------------------------------------------------
+    // Build the site URL and preview URL.
+    //
+    // We serve the preview via the server's hostname using cPanel's tilde URL:
+    //   https://server.hostname/~cpaneluser/
+    //
+    // This bypasses DNS completely — the domain doesn't need to be pointed at
+    // the server yet. The client's files are served directly from disk.
+    //
+    // IMPORTANT: $siteDomain must be resolved BEFORE generatePreviewToken() is
+    // called below so it can be stored in the token file. ai_preview.php reads
+    // it back to inject the correct <base> tag (e.g. giraffetree.com) instead
+    // of the server tilde hostname (earth1.webjive.net).
+    // -------------------------------------------------------------------------
+    $hosting = Capsule::table('tblhosting')
+        ->where('id', $account->whmcs_service_id)
+        ->first(['domain']);   // 'serverid' column name varies by WHMCS version — avoided here.
+
+    $siteDomain = $hosting ? (string)$hosting->domain : '';
+    $siteUrl    = $siteDomain ? 'https://' . $siteDomain : '#';
+
+    // -------------------------------------------------------------------------
     // Get (or generate) a preview token for the staging iframe.
     // -------------------------------------------------------------------------
     $previewToken = null;
@@ -904,7 +925,7 @@ function aisitemanager_clientarea(array $vars): array
                 $staging2     = new \WHMCS\Module\Addon\AiSiteManager\StagingManager($ftp2, $stagingDir, $clientId);
                 $previewToken = $staging2->generatePreviewToken(
                     (int)($config['preview_token_ttl'] ?? 28800),
-                    $siteDomain ?? ''   // Pass live domain so ai_preview.php uses correct <base> URL.
+                    $siteDomain  // Always a string now — resolved above.
                 );
                 $ftp2->disconnect();
             } catch (\Exception $e) {
@@ -929,22 +950,6 @@ function aisitemanager_clientarea(array $vars): array
     $headerContent = Capsule::table('mod_aisitemanager_settings')
         ->where('setting_key', 'header_wysiwyg_content')
         ->value('setting_value') ?? '';
-
-    // -------------------------------------------------------------------------
-    // Build the site URL and preview URL.
-    //
-    // We serve the preview via the server's hostname using cPanel's tilde URL:
-    //   https://server.hostname/~cpaneluser/
-    //
-    // This bypasses DNS completely — the domain doesn't need to be pointed at
-    // the server yet. The client's files are served directly from disk.
-    // -------------------------------------------------------------------------
-    $hosting = Capsule::table('tblhosting')
-        ->where('id', $account->whmcs_service_id)
-        ->first(['domain']);   // 'serverid' column name varies by WHMCS version — avoided here.
-
-    $siteDomain = $hosting ? $hosting->domain : '';
-    $siteUrl    = $siteDomain ? 'https://' . $siteDomain : '#';
 
     // Build the tilde URL directly from the account record.
     // ftp_host stores the server hostname (e.g. earth1.webjive.net) and
@@ -1172,7 +1177,10 @@ function aisitemanager_ajaxChat(int $clientId, array $config): void
     $result       = $proxy->chat($message, $chatHistory, $customerName, $customerDomain, $attachment);
     $previewToken = null;
     if ($result['staging_written']) {
-        $previewToken = $staging->generatePreviewToken((int)($config['preview_token_ttl'] ?? 28800));
+        $previewToken = $staging->generatePreviewToken(
+            (int)($config['preview_token_ttl'] ?? 28800),
+            $customerDomain  // Pass live domain so ai_preview.php injects correct <base> tag.
+        );
     }
     $ftp->disconnect();
 

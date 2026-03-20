@@ -191,27 +191,16 @@ $isHtml = in_array($ext, ['html', 'htm', 'php'], true);
 if ($isHtml) {
     $content = file_get_contents($filePath);
 
-    // Build the base URL so relative asset paths (CSS, JS, images) resolve correctly.
-    //
-    // IMPORTANT: We always use the live site's domain (e.g. https://giraffetree.com/)
-    // as the base URL, NOT the server tilde URL (https://earth1.webjive.net/~giraffe/).
-    // Using the tilde URL would cause every relative asset (CSS, JS, images) to 404
-    // because those files are served by the web server under the domain name, not the
-    // tilde path. The live domain is stored in the .preview_token file by
-    // StagingManager::generatePreviewToken() so this file is completely dynamic —
-    // it works for any client's domain with zero hardcoding.
-    $liveDomain = !empty($tokenData['site_domain']) ? trim($tokenData['site_domain']) : '';
-
-    if ($liveDomain) {
-        // Use stored live domain — assets, JS, CSS all resolve correctly.
-        $baseUrl  = 'https://' . $liveDomain . '/';
-        $basePath = '/';   // Path component for the nav intercept script below.
+    // Build the live site base URL so relative assets (CSS, JS, images) resolve
+    // against the customer's real domain, NOT the server tilde URL
+    // (e.g. earth1.webjive.net/~user/) that the preview is actually served from.
+    // site_domain is written into the token file by StagingManager::generatePreviewToken().
+    if (!empty($tokenData['site_domain'])) {
+        $baseUrl = 'https://' . $tokenData['site_domain'] . '/';
     } else {
-        // Fallback: derive from server variables (legacy token files without site_domain).
-        $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host     = $_SERVER['HTTP_HOST'] ?? '';
-        $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/ai_preview.php'), '/') . '/';
-        $baseUrl  = $scheme . '://' . $host . $basePath;
+        $scheme  = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host    = $_SERVER['HTTP_HOST'] ?? '';
+        $baseUrl = $scheme . '://' . $host . '/';
     }
 
     // The staging notice banner, injected at the top of <body>.
@@ -235,32 +224,23 @@ if ($isHtml) {
     }
 
     // Navigation tracking script.
-    // Intercepts link clicks for BOTH the preview host (earth1.webjive.net) AND the
-    // live domain (e.g. giraffetree.com). This is critical when <base> points to the
-    // live domain — absolute links in the HTML resolve to the live domain, so without
-    // intercepting them the iframe would navigate away to the live site and lose the
-    // staging context entirely.
+    // Intercepts same-origin link clicks, keeps navigation inside ai_preview.php
+    // (so staged files continue to be shown), and notifies the parent WHMCS frame
+    // via postMessage so it can update its currentPath state.
     $navScript = '<script>'
         . '(function(){'
         .   'var __tok=' . json_encode($tokenParam) . ';'
-        // The live site's hostname (e.g. "giraffetree.com"). Links to this host are
-        // intercepted and re-routed through ai_preview.php just like same-host links.
-        .   'var __live=' . json_encode($liveDomain) . ';'
         .   'document.addEventListener("click",function(e){'
         .     'var a=e.target.closest("a");'
         .     'if(!a||!a.href)return;'
         .     'var url;try{url=new URL(a.href);}catch(_){return;}'
-        //  Only intercept links to the preview host OR the live domain.
-        //  Truly external links (third-party domains) are left alone.
-        .     'var isLocal=url.host===location.host;'
-        .     'var isLive=__live&&url.host===__live;'
-        .     'if(!isLocal&&!isLive)return;'
+        //  Skip off-site links (external domains).
+        .     'if(url.host!==location.host)return;'
         //  Skip hash-only same-page anchors.
         .     'if(url.pathname===location.pathname&&url.hash)return;'
         //  Skip links that already go through ai_preview.php.
         .     'if(url.pathname.indexOf("ai_preview.php")!==-1)return;'
         .     'e.preventDefault();'
-        //  Path is already relative to the site root for live-domain links.
         .     'var path=url.pathname.replace(/^\\/+/,"");'
         //  Notify the parent WHMCS frame of the page change.
         .     'try{parent.postMessage({type:"aisitemanager_navigate",path:path},"*");}catch(_){}'
