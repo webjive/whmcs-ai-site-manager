@@ -297,7 +297,7 @@ class StagingManager
      * @return string       The new preview token.
      * @throws \RuntimeException on FTP failure.
      */
-    public function generatePreviewToken(int $ttl = 28800): string
+    public function generatePreviewToken(int $ttl = 28800, string $siteDomain = ''): string
     {
         $token  = bin2hex(random_bytes(32));
         $expiry = date('Y-m-d H:i:s', time() + $ttl);
@@ -307,10 +307,19 @@ class StagingManager
         // mismatch where the DB holds a new token but the disk file still has the
         // old expired one — which would cause a permanent 403 on every page load
         // until manually repaired.
+        //
+        // site_domain is stored so ai_preview.php can inject the correct <base>
+        // tag pointing to the live domain (e.g. giraffetree.com) rather than the
+        // server tilde URL — this ensures all relative assets (CSS, JS, images)
+        // resolve from the live site, not from earth1.webjive.net/~user/.
         $this->initialize();
         $this->ftp->writeFile(
             $this->stagingDir . '/.preview_token',
-            json_encode(['token' => $token, 'expiry' => strtotime($expiry)])
+            json_encode([
+                'token'       => $token,
+                'expiry'      => strtotime($expiry),
+                'site_domain' => $siteDomain,
+            ])
         );
 
         // FTP write succeeded — now persist the token to the DB.

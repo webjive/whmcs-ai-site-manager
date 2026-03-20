@@ -198,9 +198,14 @@ function handleChat(int $clientId, array $config): void
     $result = $proxy->chat($message, $chatHistory, $customerName, $customerDomain);
 
     // If staging was written, generate a fresh preview token while FTP is still open.
+    // Pass the customer's live domain so ai_preview.php injects the correct <base>
+    // tag — assets resolve from the real site, not the server tilde URL.
     $previewToken = null;
     if ($result['staging_written']) {
-        $previewToken = $staging->generatePreviewToken((int)($config['preview_token_ttl'] ?? 28800));
+        $previewToken = $staging->generatePreviewToken(
+            (int)($config['preview_token_ttl'] ?? 28800),
+            $customerDomain
+        );
     }
 
     $ftp->disconnect();

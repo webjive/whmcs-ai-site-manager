@@ -902,7 +902,10 @@ function aisitemanager_clientarea(array $vars): array
                 );
                 $ftp2->connect();
                 $staging2     = new \WHMCS\Module\Addon\AiSiteManager\StagingManager($ftp2, $stagingDir, $clientId);
-                $previewToken = $staging2->generatePreviewToken((int)($config['preview_token_ttl'] ?? 28800));
+                $previewToken = $staging2->generatePreviewToken(
+                    (int)($config['preview_token_ttl'] ?? 28800),
+                    $siteDomain   // Pass live domain so ai_preview.php uses correct <base> URL.
+                );
                 $ftp2->disconnect();
             } catch (\Exception $e) {
                 logActivity("AI Site Manager: Preview token generation failed for client #{$clientId}: " . $e->getMessage());

@@ -192,15 +192,27 @@ if ($isHtml) {
     $content = file_get_contents($filePath);
 
     // Build the base URL so relative asset paths (CSS, JS, images) resolve correctly.
-    // When served via a cPanel tilde URL (https://server/~user/ai_preview.php) we
-    // must include the tilde directory prefix in the base; otherwise all relative
-    // assets resolve to https://server/asset.css instead of https://server/~user/asset.css
-    // and return 404 — which is the root cause of the blank/broken preview.
-    $scheme     = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host       = $_SERVER['HTTP_HOST'] ?? '';
-    $scriptDir  = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/ai_preview.php'), '/');
-    $basePath   = $scriptDir . '/';  // e.g. '/~cpaneluser/' or '/'
-    $baseUrl    = $scheme . '://' . $host . $basePath;
+    //
+    // IMPORTANT: We always use the live site's domain (e.g. https://giraffetree.com/)
+    // as the base URL, NOT the server tilde URL (https://earth1.webjive.net/~giraffe/).
+    // Using the tilde URL would cause every relative asset (CSS, JS, images) to 404
+    // because those files are served by the web server under the domain name, not the
+    // tilde path. The live domain is stored in the .preview_token file by
+    // StagingManager::generatePreviewToken() so this file is completely dynamic —
+    // it works for any client's domain with zero hardcoding.
+    $liveDomain = !empty($tokenData['site_domain']) ? trim($tokenData['site_domain']) : '';
+
+    if ($liveDomain) {
+        // Use stored live domain — assets, JS, CSS all resolve correctly.
+        $baseUrl  = 'https://' . $liveDomain . '/';
+        $basePath = '/';   // Path component for the nav intercept script below.
+    } else {
+        // Fallback: derive from server variables (legacy token files without site_domain).
+        $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+        $host     = $_SERVER['HTTP_HOST'] ?? '';
+        $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/ai_preview.php'), '/') . '/';
+        $baseUrl  = $scheme . '://' . $host . $basePath;
+    }
 
     // The staging notice banner, injected at the top of <body>.
     $stagingBanner = $isStaged
@@ -223,34 +235,33 @@ if ($isHtml) {
     }
 
     // Navigation tracking script.
-    // Intercepts same-origin link clicks, keeps navigation inside ai_preview.php
-    // (so staged files continue to be shown), and notifies the parent WHMCS frame
-    // via postMessage so it can update its currentPath state.
+    // Intercepts link clicks for BOTH the preview host (earth1.webjive.net) AND the
+    // live domain (e.g. giraffetree.com). This is critical when <base> points to the
+    // live domain — absolute links in the HTML resolve to the live domain, so without
+    // intercepting them the iframe would navigate away to the live site and lose the
+    // staging context entirely.
     $navScript = '<script>'
         . '(function(){'
         .   'var __tok=' . json_encode($tokenParam) . ';'
-        // Base path of this script, e.g. '/~cpaneluser/' or '/'.
-        // Used to strip the tilde prefix so paths sent to the parent frame
-        // remain relative to public_html root (e.g. 'about.html', not '~user/about.html').
-        .   'var __base=' . json_encode($basePath) . ';'
+        // The live site's hostname (e.g. "giraffetree.com"). Links to this host are
+        // intercepted and re-routed through ai_preview.php just like same-host links.
+        .   'var __live=' . json_encode($liveDomain) . ';'
         .   'document.addEventListener("click",function(e){'
         .     'var a=e.target.closest("a");'
         .     'if(!a||!a.href)return;'
         .     'var url;try{url=new URL(a.href);}catch(_){return;}'
-        //  Skip off-site links (external domains).
-        .     'if(url.host!==location.host)return;'
+        //  Only intercept links to the preview host OR the live domain.
+        //  Truly external links (third-party domains) are left alone.
+        .     'var isLocal=url.host===location.host;'
+        .     'var isLive=__live&&url.host===__live;'
+        .     'if(!isLocal&&!isLive)return;'
         //  Skip hash-only same-page anchors.
         .     'if(url.pathname===location.pathname&&url.hash)return;'
         //  Skip links that already go through ai_preview.php.
         .     'if(url.pathname.indexOf("ai_preview.php")!==-1)return;'
         .     'e.preventDefault();'
-        //  Strip tilde prefix (e.g. /~cpaneluser/) to get the public_html-relative path.
-        .     'var path=url.pathname;'
-        .     'if(__base.length>1&&path.indexOf(__base)===0){'
-        .       'path=path.slice(__base.length);'
-        .     '}else{'
-        .       'path=path.replace(/^\\/+/,"");'
-        .     '}'
+        //  Path is already relative to the site root for live-domain links.
+        .     'var path=url.pathname.replace(/^\\/+/,"");'
         //  Notify the parent WHMCS frame of the page change.
         .     'try{parent.postMessage({type:"aisitemanager_navigate",path:path},"*");}catch(_){}'
         //  Navigate within the preview shim so staged files remain visible.
