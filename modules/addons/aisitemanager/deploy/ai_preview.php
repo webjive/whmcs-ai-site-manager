@@ -182,6 +182,34 @@ $mimeTypes = [
 
 $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
 
+// Read site_mode and live domain from the token data.
+$siteMode   = $tokenData['site_mode']   ?? 'construction';
+$liveDomain = !empty($tokenData['site_domain']) ? trim($tokenData['site_domain']) : '';
+
+// ---------------------------------------------------------------------------
+// Helper: fetch a remote URL via cURL
+// ---------------------------------------------------------------------------
+
+/**
+ * Fetch a URL via cURL and return the body, or null on failure.
+ */
+function fetchRemoteUrl(string $url, int $timeoutSecs = 10): ?string
+{
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 3,
+        CURLOPT_TIMEOUT        => $timeoutSecs,
+        CURLOPT_SSL_VERIFYPEER => false,
+        CURLOPT_USERAGENT      => 'AISiteManager-Preview/1.1',
+    ]);
+    $body     = curl_exec($ch);
+    $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    return ($body !== false && $httpCode < 400) ? $body : null;
+}
+
 // ---------------------------------------------------------------------------
 // For HTML files: inject <base> tag and a staging notice banner
 // ---------------------------------------------------------------------------
@@ -189,42 +217,46 @@ $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
 $isHtml = in_array($ext, ['html', 'htm', 'php'], true);
 
 if ($isHtml) {
-    $content = file_get_contents($filePath);
 
-    // Build the base URL so relative asset paths (CSS, JS, images) resolve correctly.
-    //
-    // IMPORTANT: We always use the live site's domain (e.g. https://giraffetree.com/)
-    // as the base URL, NOT the server tilde URL (https://earth1.webjive.net/~giraffe/).
-    // Using the tilde URL would cause every relative asset (CSS, JS, images) to 404
-    // because those files are served by the web server under the domain name, not the
-    // tilde path. The live domain is stored in the .preview_token file by
-    // StagingManager::generatePreviewToken() so this file is completely dynamic —
-    // it works for any client's domain with zero hardcoding.
-    $liveDomain = !empty($tokenData['site_domain']) ? trim($tokenData['site_domain']) : '';
+    if ($siteMode === 'production' && $liveDomain) {
+        // ---------------------------------------------------------------
+        // PRODUCTION MODE — fetch-proxy
+        // Fetch the live page from the real domain so all relative asset
+        // paths are already correct, then overlay staged content if any.
+        // ---------------------------------------------------------------
+        $liveUrl = 'https://' . $liveDomain . '/' . ltrim($requestedPath, '/');
+        $fetched = fetchRemoteUrl($liveUrl);
 
-    if ($liveDomain) {
-        // Use stored live domain — assets, JS, CSS all resolve correctly.
-        $baseUrl  = 'https://' . $liveDomain . '/';
-        $basePath = '/';   // Path component for the nav intercept script below.
+        if ($fetched !== null) {
+            // Staged version takes priority — substitute its content.
+            $content = $isStaged ? file_get_contents($filePath) : $fetched;
+        } else {
+            // Live fetch failed (new page not yet published, network issue).
+            // Fall back to serve-direct so brand-new pages still preview.
+            $content = file_get_contents($filePath);
+        }
+
+        // In production mode base href must point to live domain.
+        $baseUrl = 'https://' . $liveDomain . '/';
+
     } else {
-        // Fallback: derive from server variables (legacy token files without site_domain).
-        $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host     = $_SERVER['HTTP_HOST'] ?? '';
-        $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/ai_preview.php'), '/') . '/';
-        $baseUrl  = $scheme . '://' . $host . $basePath;
+        // ---------------------------------------------------------------
+        // DEVELOPMENT (CONSTRUCTION) MODE — serve direct
+        // Files live on the preview server; no live domain needed yet.
+        // ---------------------------------------------------------------
+        $content = file_get_contents($filePath);
+
+        if ($liveDomain) {
+            $baseUrl = 'https://' . $liveDomain . '/';
+        } else {
+            $scheme   = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+            $host     = $_SERVER['HTTP_HOST'] ?? '';
+            $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/') . '/';
+            $baseUrl  = $scheme . '://' . $host . $basePath;
+        }
     }
 
-    // The staging notice banner, injected at the top of <body>.
-    $stagingBanner = $isStaged
-        ? '<div style="position:fixed;bottom:0;left:0;right:0;background:#1a73e8;color:#fff;'
-          . 'font-family:sans-serif;font-size:13px;padding:8px 16px;z-index:99999;'
-          . 'display:flex;align-items:center;justify-content:center;gap:10px;">'
-          . '🔍 <strong>Preview mode</strong> — changes are staged, not live yet. '
-          . 'Click <strong>Commit</strong> in AI Site Manager to publish.</div>'
-        : '';
-
-    // Inject <base> into <head> so relative links and resources load from live domain.
-    // This allows the browser to fetch CSS, images, JS from the actual live site.
+    // Inject <base> tag so relative assets resolve against correct domain.
     if (stripos($content, '<head') !== false) {
         $content = preg_replace(
             '/(<head[^>]*>)/i',
@@ -234,43 +266,37 @@ if ($isHtml) {
         );
     }
 
-    // Navigation tracking script.
-    // Intercepts link clicks for BOTH the preview host (earth1.webjive.net) AND the
-    // live domain (e.g. giraffetree.com). This is critical when <base> points to the
-    // live domain — absolute links in the HTML resolve to the live domain, so without
-    // intercepting them the iframe would navigate away to the live site and lose the
-    // staging context entirely.
+    // Staging notice banner.
+    $stagingBanner = $isStaged
+        ? '<div style="position:fixed;bottom:0;left:0;right:0;background:#1a73e8;color:#fff;'
+          . 'font-family:sans-serif;font-size:13px;padding:8px 16px;z-index:99999;'
+          . 'display:flex;align-items:center;justify-content:center;gap:10px;">'
+          . '🔍 <strong>Preview mode</strong> — changes are staged, not live yet. '
+          . 'Click <strong>Commit</strong> in AI Site Manager to publish.</div>'
+        : '';
+
+    // Nav intercept — keeps navigation inside ai_preview.php and notifies parent frame.
     $navScript = '<script>'
         . '(function(){'
         .   'var __tok=' . json_encode($tokenParam) . ';'
-        // The live site's hostname (e.g. "giraffetree.com"). Links to this host are
-        // intercepted and re-routed through ai_preview.php just like same-host links.
         .   'var __live=' . json_encode($liveDomain) . ';'
         .   'document.addEventListener("click",function(e){'
         .     'var a=e.target.closest("a");'
         .     'if(!a||!a.href)return;'
         .     'var url;try{url=new URL(a.href);}catch(_){return;}'
-        //  Only intercept links to the preview host OR the live domain.
-        //  Truly external links (third-party domains) are left alone.
         .     'var isLocal=url.host===location.host;'
         .     'var isLive=__live&&url.host===__live;'
         .     'if(!isLocal&&!isLive)return;'
-        //  Skip hash-only same-page anchors.
         .     'if(url.pathname===location.pathname&&url.hash)return;'
-        //  Skip links that already go through ai_preview.php.
         .     'if(url.pathname.indexOf("ai_preview.php")!==-1)return;'
         .     'e.preventDefault();'
-        //  Path is already relative to the site root for live-domain links.
         .     'var path=url.pathname.replace(/^\\/+/,"");'
-        //  Notify the parent WHMCS frame of the page change.
         .     'try{parent.postMessage({type:"aisitemanager_navigate",path:path},"*");}catch(_){}'
-        //  Navigate within the preview shim so staged files remain visible.
         .     'location.href="ai_preview.php?t="+encodeURIComponent(__tok)+"&path="+encodeURIComponent(path);'
         .   '});'
         . '}());'
         . '</script>';
 
-    // Inject staging banner and nav script before </body>.
     $inject = $navScript . $stagingBanner;
     if (stripos($content, '</body>') !== false) {
         $content = str_ireplace('</body>', $inject . '</body>', $content);
@@ -279,12 +305,11 @@ if ($isHtml) {
     }
 
     header('Content-Type: text/html; charset=utf-8');
-    // Prevent browser caching of preview so edits always show fresh content.
     header('Cache-Control: no-store, no-cache, must-revalidate');
     echo $content;
 
 } else {
-    // Non-HTML files: serve as-is with appropriate content type.
+    // Non-HTML files: serve as-is.
     header('Content-Type: ' . $contentType);
     header('Cache-Control: no-store, no-cache, must-revalidate');
     readfile($filePath);
